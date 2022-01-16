@@ -76,7 +76,7 @@ func handleItemMutationResult(c *gin.Context, db *sql.DB, body *ItemMutationBody
 
 func handleGroupMutationResult(c *gin.Context, db *sql.DB, body *GroupMutationBody, err error, id, status int) {
 	if err != nil {
-		response := fmt.Sprintf("error: group with name %s already exists", body.Name)
+		response := fmt.Sprintf("error: group with name '%s' already exists", body.Name)
 		c.String(http.StatusBadRequest, response)
 	} else {
 		items := []Item{}

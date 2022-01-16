@@ -17,28 +17,39 @@ func getGroups(c *gin.Context) {
 	value, _ := c.Get("db")
 	db := value.(*sql.DB)
 	rows, _ := db.QueryContext(c, `
-		SELECT items.*, groups.name AS groupName
+		SELECT items.id, items.name, items.count, groups.id AS groupId, groups.name AS groupName
 		FROM items LEFT JOIN groups ON items.groupId = groups.id
+		UNION
+		SELECT items.id, items.name, items.count, groups.id AS groupId, groups.name AS groupName
+		FROM groups LEFT JOIN items ON groups.id = items.groupId
 	`)
 
-	groupMap := make(map[int]*Group)
+	groupMap := map[int]*Group{0: {0, "", []Item{}}}
 	for rows.Next() {
 		var (
-			item      Item
+			id        sql.NullInt32
+			name      sql.NullString
+			count     sql.NullInt32
 			groupId   sql.NullInt32
 			groupName sql.NullString
 		)
 
-		rows.Scan(&item.Id, &item.Name, &item.Count, &groupId, &groupName)
-		id := 0
-		if groupId.Valid {
-			id = int(groupId.Int32)
-		}
+		rows.Scan(&id, &name, &count, &groupId, &groupName)
+		if id.Valid {
+			grId := 0
+			if groupId.Valid {
+				grId = int(groupId.Int32)
+			}
 
-		if value, ok := groupMap[id]; ok {
-			value.Items = append(value.Items, item)
+			item := Item{int(id.Int32), name.String, int(count.Int32), nil}
+			if value, ok := groupMap[grId]; ok {
+				value.Items = append(value.Items, item)
+			} else {
+				groupMap[grId] = &Group{grId, groupName.String, []Item{item}}
+			}
 		} else {
-			groupMap[id] = &Group{id, groupName.String, []Item{item}}
+			grId := int(groupId.Int32)
+			groupMap[grId] = &Group{grId, groupName.String, []Item{}}
 		}
 	}
 
